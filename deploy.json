@@ -1,0 +1,489 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "baseName": {
+            "type": "string",
+            "metadata": {
+                "description": "This basename will be attached to all services. Eg. <qubitumbasename>-<appname>"
+            }
+        },
+        "clientAppUrl": {
+            "type": "string",
+            "metadata": {
+                "description": "ex. https://www.qubitum.se"
+            }
+        },
+        "DbConnectionString": {
+            "type": "string",
+            "metadata": {
+                "description": "mongodb+srv://...."
+            }
+        }
+    },
+    "functions": [],
+    "variables": {
+        "servicePlan": "[concat(parameters('baseName'),'-servicePlan')]",
+        "storageAccount": "[concat(parameters('baseName'),'storage')]"
+    },
+    "resources": [
+        /*** Storage ***/
+        {
+            "type": "Microsoft.Storage/storageAccounts",
+            "apiVersion": "2020-08-01-preview",
+            "name": "[variables('storageAccount')]",
+            "location": "[resourceGroup().location]",
+            "sku": {
+                "name": "Standard_RAGRS",
+                "tier": "Standard"
+            },
+            "kind": "StorageV2",
+            "properties": {
+                "minimumTlsVersion": "TLS1_2",
+                "allowBlobPublicAccess": true,
+                "networkAcls": {
+                    "bypass": "AzureServices",
+                    "virtualNetworkRules": [],
+                    "ipRules": [],
+                    "defaultAction": "Allow"
+                },
+                "supportsHttpsTrafficOnly": true,
+                "encryption": {
+                    "services": {
+                        "file": {
+                            "keyType": "Account",
+                            "enabled": true
+                        },
+                        "blob": {
+                            "keyType": "Account",
+                            "enabled": true
+                        }
+                    },
+                    "keySource": "Microsoft.Storage"
+                },
+                "accessTier": "Hot"
+            }
+        },
+        {
+            "type": "Microsoft.Storage/storageAccounts/blobServices",
+            "apiVersion": "2020-08-01-preview",
+            "name": "[concat(variables('storageAccount'), '/default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccount'))]"
+            ],
+            "sku": {
+                "name": "Standard_RAGRS",
+                "tier": "Standard"
+            },
+            "properties": {
+                "cors": {
+                    "corsRules": []
+                },
+                "deleteRetentionPolicy": {
+                    "enabled": true,
+                    "days": 7
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Storage/storageAccounts/fileServices",
+            "apiVersion": "2020-08-01-preview",
+            "name": "[concat(variables('storageAccount'), '/default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccount'))]"
+            ],
+            "sku": {
+                "name": "Standard_RAGRS",
+                "tier": "Standard"
+            },
+            "properties": {
+                "protocolSettings": {
+                    "smb": {}
+                },
+                "cors": {
+                    "corsRules": []
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Storage/storageAccounts/queueServices",
+            "apiVersion": "2020-08-01-preview",
+            "name": "[concat(variables('storageAccount'), '/default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccount'))]"
+            ],
+            "properties": {
+                "cors": {
+                    "corsRules": []
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Storage/storageAccounts/tableServices",
+            "apiVersion": "2020-08-01-preview",
+            "name": "[concat(variables('storageAccount'), '/default')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccount'))]"
+            ],
+            "properties": {
+                "cors": {
+                    "corsRules": []
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+            "apiVersion": "2020-08-01-preview",
+            "name": "[concat(variables('storageAccount'), '/default/photos')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/blobServices', variables('storageAccount'), 'default')]",
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccount'))]"
+            ],
+            "properties": {
+                "defaultEncryptionScope": "$account-encryption-key",
+                "denyEncryptionScopeOverride": false,
+                "publicAccess": "Blob"
+            }
+        },
+        {
+            "type": "Microsoft.Storage/storageAccounts/queueServices/queues",
+            "apiVersion": "2020-08-01-preview",
+            "name": "[concat(variables('storageAccount'), '/default/approvals')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/queueServices', variables('storageAccount'), 'default')]",
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccount'))]"
+            ],
+            "properties": {
+                "metadata": {}
+            }
+        },
+        {
+            "type": "Microsoft.Storage/storageAccounts/queueServices/queues",
+            "apiVersion": "2020-08-01-preview",
+            "name": "[concat(variables('storageAccount'), '/default/deleteproject')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/queueServices', variables('storageAccount'), 'default')]",
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccount'))]"
+            ],
+            "properties": {
+                "metadata": {}
+            }
+        },
+        {
+            "type": "Microsoft.Storage/storageAccounts/queueServices/queues",
+            "apiVersion": "2020-08-01-preview",
+            "name": "[concat(variables('storageAccount'), '/default/deleteuser')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/queueServices', variables('storageAccount'), 'default')]",
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccount'))]"
+            ],
+            "properties": {
+                "metadata": {}
+            }
+        },
+        {
+            "type": "Microsoft.Storage/storageAccounts/queueServices/queues",
+            "apiVersion": "2020-08-01-preview",
+            "name": "[concat(variables('storageAccount'), '/default/invitations')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/queueServices', variables('storageAccount'), 'default')]",
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccount'))]"
+            ],
+            "properties": {
+                "metadata": {}
+            }
+        },
+        {
+            "type": "Microsoft.Storage/storageAccounts/queueServices/queues",
+            "apiVersion": "2020-08-01-preview",
+            "name": "[concat(variables('storageAccount'), '/default/pdfgen')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/queueServices', variables('storageAccount'), 'default')]",
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccount'))]"
+            ],
+            "properties": {
+                "metadata": {}
+            }
+        },
+        {
+            "type": "Microsoft.Storage/storageAccounts/queueServices/queues",
+            "apiVersion": "2020-08-01-preview",
+            "name": "[concat(variables('storageAccount'), '/default/updates')]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/queueServices', variables('storageAccount'), 'default')]",
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccount'))]"
+            ],
+            "properties": {
+                "metadata": {}
+            }
+        },
+        /*** ServicePlan ***/
+        {
+            "name": "[variables('servicePlan')]",
+            "type": "Microsoft.Web/serverfarms",
+            "apiVersion": "2018-02-01",
+            "location": "[resourceGroup().location]",
+            "sku": {
+                "name": "F1",
+                "capacity": 1
+            },
+            "tags": {
+                "displayName": "[variables('servicePlan')]"
+            },
+            "properties": {
+                "name": "[variables('servicePlan')]"
+            }
+        },
+        /*** Azure Function - API ***/
+        {
+            "name": "[concat(parameters('baseName'),'-api')]",
+            "type": "Microsoft.Web/sites",
+            "apiVersion": "2018-11-01",
+            "location": "[resourceGroup().location]",
+            "kind": "functionapp",
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/serverfarms', variables('servicePlan'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccount'))]"
+            ],
+            "properties": {
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('servicePlan'))]",
+                "siteConfig": {
+                    "cors": {
+                        "allowedOrigins": [
+                            "https://functions.azure.com",
+                            "https://functions-staging.azure.com",
+                            "https://functions-next.azure.com",
+                            "[parameters('clientAppUrl')]"
+                        ]
+                    },
+                    "appSettings": [
+                        {
+                            "name": "ApiUrl",
+                            "value": "[concat('https://', parameters('baseName'),'-api.azurewebsites.net/api')]"
+                        },
+                        {
+                            "name": "AzureWebJobsDashboard",
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccount'), ';AccountKey=', listKeys(variables('storageAccount'),'2015-05-01-preview').key1)]"
+                        },
+                        {
+                            "name": "AzureWebJobsStorage",
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccount'), ';AccountKey=', listKeys(variables('storageAccount'),'2015-05-01-preview').key1)]"
+                        },
+                        {
+                            "name": "DbConnectionString",
+                            "value": "[parameters('DbConnectionString')]"
+                        },
+                        {
+                            "name": "FUNCTIONS_WORKER_PROCESS_COUNT",
+                            "value": "10",
+                            "slotSetting": false
+                        },
+                        {
+                            "name": "NODE_ENV",
+                            "value": "production",
+                            "slotSetting": false
+                        },
+                        {
+                            "name": "StorageAccount",
+                            "value": "[variables('storageAccount')]",
+                            "slotSetting": false
+                        },
+                        {
+                            "name": "StorageKey",
+                            "value": "[listKeys(variables('storageAccount'),'2015-05-01-preview').key1]",
+                            "slotSetting": false
+                        },
+                        {
+                            "name": "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccount'), ';AccountKey=', listKeys(variables('storageAccount'),'2015-05-01-preview').key1)]"
+                        },
+                        {
+                            "name": "WEBSITE_CONTENTSHARE",
+                            "value": "[toLower(concat(parameters('baseName'),'-api'))]"
+                        },
+                        {
+                            "name": "FUNCTIONS_EXTENSION_VERSION",
+                            "value": "~3"
+                        },
+                        {
+                            "name": "FUNCTIONS_WORKER_RUNTIME",
+                            "value": "node"
+                        },
+                        {
+                            "name": "WEBSITE_NODE_DEFAULT_VERSION",
+                            "value": "~12",
+                            "slotSetting": false
+                        }
+                    ]
+                }
+            }
+        },
+
+        /*** Azure Function - Auth Helpers ***/
+        {
+            "name": "[concat(parameters('baseName'),'-auth-helpers')]",
+            "type": "Microsoft.Web/sites",
+            "apiVersion": "2018-11-01",
+            "location": "[resourceGroup().location]",
+            "kind": "functionapp",
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/serverfarms', variables('servicePlan'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccount'))]"
+            ],
+            "properties": {
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('servicePlan'))]",
+                "siteConfig": {
+                    "appSettings": [
+                        {
+                            "name": "AzureWebJobsDashboard",
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccount'), ';AccountKey=', listKeys(variables('storageAccount'),'2015-05-01-preview').key1)]"
+                        },
+                        {
+                            "name": "AzureWebJobsStorage",
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccount'), ';AccountKey=', listKeys(variables('storageAccount'),'2015-05-01-preview').key1)]"
+                        },
+                        {
+                            "name": "B2CClientId",
+                            "value": "31027a16-f9c7-410f-85e7-edc84cba413d",
+                            "slotSetting": false
+                        },
+                        {
+                            "name": "B2CIssuer",
+                            "value": "https://qubitum.b2clogin.com/c7f7a979-a149-4029-bce6-1a80fec0538d/v2.0/",
+                            "slotSetting": false
+                        },
+                        {
+                            "name": "B2CRedirectUri",
+                            "value": "[parameters('clientAppUrl')]",
+                            "slotSetting": false
+                        },
+
+
+                        {
+                            "name": "B2CScope",
+                            "value": "openid https://qubitum.onmicrosoft.com/c7f7a979-a149-4029-bce6-1a80fec0538d/api_access",
+                            "slotSetting": false
+                        },
+                        {
+                            "name": "B2CTenant",
+                            "value": "qubitum",
+                            "slotSetting": false
+                        },
+
+
+                        {
+                            "name": "ClientSignupUrl",
+                            "value": "[concat(parameters('clientAppUrl'), '/signup')]",
+                            "slotSetting": false
+                        },
+                        {
+                            "name": "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccount'), ';AccountKey=', listKeys(variables('storageAccount'),'2015-05-01-preview').key1)]"
+                        },
+                        {
+                            "name": "WEBSITE_CONTENTSHARE",
+                            "value": "[toLower(concat(parameters('baseName'),'-auth-helpers'))]"
+                        },
+                        {
+                            "name": "FUNCTIONS_EXTENSION_VERSION",
+                            "value": "~3"
+                        },
+                        {
+                            "name": "APPINSIGHTS_INSTRUMENTATIONKEY",
+                            "value": "[reference(resourceId('microsoft.insights/components/', 'applicationInsightsName'), '2015-05-01').InstrumentationKey]"
+                        },
+                        {
+                            "name": "FUNCTIONS_WORKER_RUNTIME",
+                            "value": "dotnet"
+                        },
+                        {
+                            "name": "WEBSITE_LOAD_CERTIFICATES",
+                            "value": "*",
+                            "slotSetting": false
+                        }
+                    ]
+                }
+            }
+        },
+
+
+
+        /*** Azure Function - API Helpers ***/
+        /*** Azure Function - Workers ***/
+        /*** Azure Function - PDF Trigger ***/
+        {
+            "name": "[concat(parameters('baseName'),'-pdf-trigger')]",
+            "type": "Microsoft.Web/sites",
+            "apiVersion": "2018-11-01",
+            "location": "[resourceGroup().location]",
+            "kind": "functionapp,linux",
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/serverfarms', variables('servicePlan'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccount'))]"
+            ],
+            "properties": {
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('servicePlan'))]",
+                "siteConfig": {
+                    "appSettings": [
+                        {
+                            "name": "AzureWebJobsDashboard",
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccount'), ';AccountKey=', listKeys(variables('storageAccount'),'2015-05-01-preview').key1)]"
+                        },
+                        {
+                            "name": "AzureWebJobsStorage",
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccount'), ';AccountKey=', listKeys(variables('storageAccount'),'2015-05-01-preview').key1)]"
+                        },
+                        {
+                            "name": "CDN_URL",
+                            "value": "[concat('https://', parameters('baseName'),'-api.azurewebsites.net/api/files')]",
+                            "slotSetting": false
+                        },
+                        {
+                            "name": "ENABLE_ORYX_BUILD",
+                            "value": "true",
+                            "slotSetting": false
+                        },
+                        {
+                            "name": "SCM_DO_BUILD_DURING_DEPLOYMENT",
+                            "value": "true",
+                            "slotSetting": false
+                        },
+                        {
+                            "name": "StorageAccount",
+                            "value": "[variables('storageAccount')]",
+                            "slotSetting": false
+                        },
+                        {
+                            "name": "StorageKey",
+                            "value": "[listKeys(variables('storageAccount'),'2015-05-01-preview').key1]",
+                            "slotSetting": false
+                        },
+                        {
+                            "name": "WEBSITE_RUN_FROM_PACKAGE",
+                            "value": "false",
+                            "slotSetting": false
+                        },
+                        {
+                            "name": "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccount'), ';AccountKey=', listKeys(variables('storageAccount'),'2015-05-01-preview').key1)]"
+                        },
+                        {
+                            "name": "WEBSITE_CONTENTSHARE",
+                            "value": "[toLower(concat(parameters('baseName'),'-pdf-trigger'))]"
+                        },
+                        {
+                            "name": "FUNCTIONS_EXTENSION_VERSION",
+                            "value": "~3"
+                        },
+                        {
+                            "name": "FUNCTIONS_WORKER_RUNTIME",
+                            "value": "node"
+                        }
+                    ]
+                }
+            }
+        }
+
+    ],
+    "outputs": {}
+}
