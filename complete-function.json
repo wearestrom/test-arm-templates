@@ -13,11 +13,11 @@
     "variables": {},
     "resources": [
         {
-            "name": "[concat(parameters('baseName'),'-storage')]",
+            "name": "[concat(parameters('baseName'),'storage')]",
             "type": "Microsoft.Storage/storageAccounts",
             "apiVersion": "2019-06-01",
             "tags": {
-                "displayName": "[concat(parameters('baseName'),'-storage')]"
+                "displayName": "[concat(parameters('baseName'),'storage')]"
             },
             "location": "[resourceGroup().location]",
             "kind": "StorageV2",
@@ -50,7 +50,7 @@
             "kind": "functionapp",
             "dependsOn": [
                 "[resourceId('Microsoft.Web/serverfarms', concat(parameters('baseName'),'-servicePlan'))]",
-                "[resourceId('Microsoft.Storage/storageAccounts', concat(parameters('baseName'),'-storage'))]"
+                "[resourceId('Microsoft.Storage/storageAccounts', concat(parameters('baseName'),'storage'))]"
             ],
             "properties": {
                 "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', concat(parameters('baseName'),'-servicePlan'))]",
@@ -58,15 +58,15 @@
                     "appSettings": [
                         {
                             "name": "AzureWebJobsDashboard",
-                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', concat(parameters('baseName'),'-storage'), ';AccountKey=', listKeys(concat(parameters('baseName'),'-storage'),'2015-05-01-preview').key1)]"
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', concat(parameters('baseName'),'storage'), ';AccountKey=', listKeys(concat(parameters('baseName'),'storage'),'2015-05-01-preview').key1)]"
                         },
                         {
                             "name": "AzureWebJobsStorage",
-                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', concat(parameters('baseName'),'-storage'), ';AccountKey=', listKeys(concat(parameters('baseName'),'-storage'),'2015-05-01-preview').key1)]"
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', concat(parameters('baseName'),'storage'), ';AccountKey=', listKeys(concat(parameters('baseName'),'storage'),'2015-05-01-preview').key1)]"
                         },
                         {
                             "name": "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
-                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', concat(parameters('baseName'),'-storage'), ';AccountKey=', listKeys(concat(parameters('baseName'),'-storage'),'2015-05-01-preview').key1)]"
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', concat(parameters('baseName'),'storage'), ';AccountKey=', listKeys(concat(parameters('baseName'),'storage'),'2015-05-01-preview').key1)]"
                         },
                         {
                             "name": "WEBSITE_CONTENTSHARE",
