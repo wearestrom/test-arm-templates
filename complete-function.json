@@ -1,0 +1,93 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "baseName": {
+            "type": "string",
+            "metadata": {
+                "description": "This basename will be attached to all services. Eg. <qubitumbasename>-<appname>"
+            }
+        }
+    },
+    "functions": [],
+    "variables": {},
+    "resources": [
+        {
+            "name": "[concat(parameters('baseName'),'-storage')]",
+            "type": "Microsoft.Storage/storageAccounts",
+            "apiVersion": "2019-06-01",
+            "tags": {
+                "displayName": "[concat(parameters('baseName'),'-storage')]"
+            },
+            "location": "[resourceGroup().location]",
+            "kind": "StorageV2",
+            "sku": {
+                "name": "Standard_GRS",
+                "tier": "Standard"
+            }
+        },
+        {
+            "name": "[concat(parameters('baseName'),'-servicePlan')]",
+            "type": "Microsoft.Web/serverfarms",
+            "apiVersion": "2018-02-01",
+            "location": "[resourceGroup().location]",
+            "sku": {
+                "name": "F1",
+                "capacity": 1
+            },
+            "tags": {
+                "displayName": "[concat(parameters('baseName'),'-servicePlan')]"
+            },
+            "properties": {
+                "name": "[concat(parameters('baseName'),'-servicePlan')]"
+            }
+        },
+        {
+            "name": "[concat(parameters('baseName'),'-function-api')]",
+            "type": "Microsoft.Web/sites",
+            "apiVersion": "2018-11-01",
+            "location": "[resourceGroup().location]",
+            "kind": "functionapp",
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/serverfarms', concat(parameters('baseName'),'-servicePlan'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', concat(parameters('baseName'),'-storage'))]"
+            ],
+            "properties": {
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', concat(parameters('baseName'),'-servicePlan'))]",
+                "siteConfig": {
+                    "appSettings": [
+                        {
+                            "name": "AzureWebJobsDashboard",
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', concat(parameters('baseName'),'-storage'), ';AccountKey=', listKeys(concat(parameters('baseName'),'-storage'),'2015-05-01-preview').key1)]"
+                        },
+                        {
+                            "name": "AzureWebJobsStorage",
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', concat(parameters('baseName'),'-storage'), ';AccountKey=', listKeys(concat(parameters('baseName'),'-storage'),'2015-05-01-preview').key1)]"
+                        },
+                        {
+                            "name": "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', concat(parameters('baseName'),'-storage'), ';AccountKey=', listKeys(concat(parameters('baseName'),'-storage'),'2015-05-01-preview').key1)]"
+                        },
+                        {
+                            "name": "WEBSITE_CONTENTSHARE",
+                            "value": "[toLower(concat(parameters('baseName'),'-function-api'))]"
+                        },
+                        {
+                            "name": "FUNCTIONS_EXTENSION_VERSION",
+                            "value": "~3"
+                        },
+                        {
+                            "name": "APPINSIGHTS_INSTRUMENTATIONKEY",
+                            "value": "[reference(resourceId('microsoft.insights/components/', 'applicationInsightsName'), '2015-05-01').InstrumentationKey]"
+                        },
+                        {
+                            "name": "FUNCTIONS_WORKER_RUNTIME",
+                            "value": "node"
+                        }
+                    ]
+                }
+            }
+        }
+    ],
+    "outputs": {}
+}
