@@ -20,10 +20,28 @@
                 "description": "mongodb+srv://...."
             }
         },
-        "B2CTenant": {
+        "DbName": {
+            "type": "string",
+            "metadata": {
+                "description": "qubitumdb"
+            }
+        },
+        "BackupDbConnectionString": {
+            "type": "string",
+            "metadata": {
+                "description": "mongodb+srv://...."
+            }
+        },
+        "B2CTenantId": {
             "type": "string",
             "metadata": {
                 "description": "description"
+            }
+        },
+        "B2CTenant": {
+            "type": "string",
+            "metadata": {
+                "description": "ex. qubitumpreprod - without onmicrosoft..."
             }
         },
         "B2CClientAppID": {
@@ -37,12 +55,33 @@
             "metadata": {
                 "description": "description"
             }
+        },
+        "B2CDaemonAppID": {
+            "type": "string",
+            "metadata": {
+                "description": "description"
+            }
+        },
+        "B2CDaemonAppClientSecret": {
+            "type": "string",
+            "metadata": {
+                "description": "description"
+            }
+        },
+        "LinuxLocation": {
+            "type": "string",
+            "defaultValue": "West Europe",
+            "metadata": {
+                "description": "Can't have same location as main resource."
+            }
         }
     },
     "functions": [],
     "variables": {
-        "servicePlan": "[concat(parameters('baseName'),'-servicePlan')]",
-        "storageAccount": "[concat(parameters('baseName'),'storage')]"
+        "servicePlan": "[concat(parameters('baseName'),'service')]",
+        "storageAccount": "[concat(parameters('baseName'),'storage')]",
+        "servicePlanLinux": "[concat(parameters('baseName'),'serviceLinux')]",
+        "storageAccountLinux": "[concat(parameters('baseName'),'storagelinux')]"
     },
     "resources": [
         /*** Storage ***/
@@ -449,20 +488,226 @@
         },
 
         /*** Azure Function - API Helpers ***/
-        /*** Azure Function - Workers ***/
-        /*** Azure Function - PDF Trigger ***/
         {
-            "name": "[concat(parameters('baseName'),'-pdf-trigger')]",
+            "name": "[concat(parameters('baseName'),'-api-helpers')]",
             "type": "Microsoft.Web/sites",
             "apiVersion": "2018-11-01",
             "location": "[resourceGroup().location]",
-            "kind": "functionapp,linux",
+            "kind": "functionapp",
             "dependsOn": [
                 "[resourceId('Microsoft.Web/serverfarms', variables('servicePlan'))]",
                 "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccount'))]"
             ],
             "properties": {
                 "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('servicePlan'))]",
+                "siteConfig": {
+                    "appSettings": [
+                        {
+                            "name": "AzureWebJobsDashboard",
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccount'), ';AccountKey=', listKeys(variables('storageAccount'),'2015-05-01-preview').key1)]"
+                        },
+                        {
+                            "name": "AzureWebJobsStorage",
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccount'), ';AccountKey=', listKeys(variables('storageAccount'),'2015-05-01-preview').key1)]"
+                        },
+                        {
+                            "name": "BackupConnectionString",
+                            "value": "[parameters('BackupDbConnectionString')]",
+                            "slotSetting": false
+                        },
+                        {
+                            "name": "ClientId",
+                            "value": "[parameters('B2CDaemonAppID')]",
+                            "slotSetting": false
+                        },
+                        {
+                            "name": "ClientSecret",
+                            "value": "[parameters('B2CDaemonAppClientSecret')]",
+                            "slotSetting": false
+                        },
+                        {
+                            "name": "ConnectionString",
+                            "value": "[parameters('DbConnectionString')]",
+                            "slotSetting": false
+                        },
+                        {
+                            "name": "DBName",
+                            "value": "[parameters('DbName')]",
+                            "slotSetting": false
+                        },
+                        {
+                            "name": "FUNCTIONS_EXTENSION_VERSION",
+                            "value": "~3",
+                            "slotSetting": false
+                        },
+                        {
+                            "name": "FUNCTIONS_WORKER_RUNTIME",
+                            "value": "node",
+                            "slotSetting": false
+                        },
+                        {
+                            "name": "TenantId",
+                            "value": "[parameters('B2CTenantId')]",
+                            "slotSetting": false
+                        },
+                        {
+                            "name": "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccount'), ';AccountKey=', listKeys(variables('storageAccount'),'2015-05-01-preview').key1)]"
+                        },
+                        {
+                            "name": "WEBSITE_CONTENTSHARE",
+                            "value": "[toLower(concat(parameters('baseName'),'-api-helpers'))]"
+                        },
+                        {
+                            "name": "WEBSITE_ENABLE_SYNC_UPDATE_SITE",
+                            "value": "true",
+                            "slotSetting": false
+                        },
+                        {
+                            "name": "WEBSITE_NODE_DEFAULT_VERSION",
+                            "value": "~12",
+                            "slotSetting": false
+                        },
+                        {
+                            "name": "WEBSITE_RUN_FROM_PACKAGE",
+                            "value": "1",
+                            "slotSetting": false
+                        }
+                    ]
+                }
+            }
+        },
+
+        /*** Azure Function - Workers ***/
+        {
+            "name": "[concat(parameters('baseName'),'-workers')]",
+            "type": "Microsoft.Web/sites",
+            "apiVersion": "2018-11-01",
+            "location": "[resourceGroup().location]",
+            "kind": "functionapp",
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/serverfarms', variables('servicePlan'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccount'))]"
+            ],
+            "properties": {
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('servicePlan'))]",
+                "siteConfig": {
+                    "appSettings": [
+                        {
+                            "name": "AzureWebJobsDashboard",
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccount'), ';AccountKey=', listKeys(variables('storageAccount'),'2015-05-01-preview').key1)]"
+                        },
+                        {
+                            "name": "AzureWebJobsStorage",
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccount'), ';AccountKey=', listKeys(variables('storageAccount'),'2015-05-01-preview').key1)]"
+                        },
+                        {
+                            "name": "DatabaseConnectionString",
+                            "value": "[parameters('DbConnectionString')]",
+                            "slotSetting": false
+                        },
+                        {
+                            "name": "DatabaseName",
+                            "value": "[parameters('DbName')]",
+                            "slotSetting": false
+                        },
+                        {
+                            "name": "FUNCTIONS_EXTENSION_VERSION",
+                            "value": "~3",
+                            "slotSetting": false
+                        },
+                        {
+                            "name": "FUNCTIONS_WORKER_RUNTIME",
+                            "value": "node",
+                            "slotSetting": false
+                        },
+                        {
+                            "name": "StorageAccount",
+                            "value": "[variables('storageAccount')]",
+                            "slotSetting": false
+                        },
+                        {
+                            "name": "StorageKey",
+                            "value": "[listKeys(variables('storageAccount'),'2015-05-01-preview').key1]",
+                            "slotSetting": false
+                        },
+                        {
+                            "name": "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccount'), ';AccountKey=', listKeys(variables('storageAccount'),'2015-05-01-preview').key1)]"
+                        },
+                        {
+                            "name": "WEBSITE_CONTENTSHARE",
+                            "value": "[toLower(concat(parameters('baseName'),'-workers'))]"
+                        },
+                        {
+                            "name": "WEBSITE_ENABLE_SYNC_UPDATE_SITE",
+                            "value": "true",
+                            "slotSetting": false
+                        },
+                        {
+                            "name": "WEBSITE_NODE_DEFAULT_VERSION",
+                            "value": "~12",
+                            "slotSetting": false
+                        },
+                        {
+                            "name": "WEBSITE_RUN_FROM_PACKAGE",
+                            "value": "1",
+                            "slotSetting": false
+                        }
+                    ]
+                }
+            }
+        },
+
+        /*** Azure Function - PDF Trigger ***/
+        /* Creates a linux app. Important! Can't be in the same region as main resource. */
+
+        /*** ServicePlan ***/
+        {
+            "type": "Microsoft.Web/serverfarms",
+            "apiVersion": "2019-08-01",
+            "name": "[variables('servicePlanLinux')]",
+            "location": "[parameters('LinuxLocation')]",
+            "kind": "linux",
+            "properties": {
+                "reserved": true
+            },
+            "sku": {
+                "name": "Y1",
+                "tier": "Dynamic",
+                "size": "Y1",
+                "family": "Y",
+                "capacity": 0
+            },
+            "tags": {
+                "displayName": "[variables('servicePlanLinux')]"
+            }
+        },
+        /*** Storage ***/
+        {
+            "type": "Microsoft.Storage/storageAccounts",
+            "name": "[variables('storageAccountLinux')]",
+            "apiVersion": "2019-06-01",
+            "location": "[parameters('LinuxLocation')]",
+            "kind": "StorageV2",
+            "sku": {
+                "name": "Standard_LRS"
+            }
+        },
+        /*** Function ***/
+        {
+            "name": "[concat(parameters('baseName'),'-pdf-trigger')]",
+            "type": "Microsoft.Web/sites",
+            "apiVersion": "2019-08-01",
+            "location": "[parameters('LinuxLocation')]",
+            "kind": "functionapp,linux",
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/serverfarms', variables('servicePlanLinux'))]",
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountLinux'))]"
+            ],
+            "properties": {
+                "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('servicePlanLinux'))]",
+                "clientAffinityEnabled": false,
                 "siteConfig": {
                     "appSettings": [
                         {
@@ -497,19 +742,6 @@
                             "name": "StorageKey",
                             "value": "[listKeys(variables('storageAccount'),'2015-05-01-preview').key1]",
                             "slotSetting": false
-                        },
-                        {
-                            "name": "WEBSITE_RUN_FROM_PACKAGE",
-                            "value": "false",
-                            "slotSetting": false
-                        },
-                        {
-                            "name": "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
-                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccount'), ';AccountKey=', listKeys(variables('storageAccount'),'2015-05-01-preview').key1)]"
-                        },
-                        {
-                            "name": "WEBSITE_CONTENTSHARE",
-                            "value": "[toLower(concat(parameters('baseName'),'-pdf-trigger'))]"
                         },
                         {
                             "name": "FUNCTIONS_EXTENSION_VERSION",
